@@ -1,3 +1,19 @@
+/*
+This function creates an empty asset.
+
+Input:
+{
+    "assetName" : "the name of the asset"
+}
+
+Output:
+{
+    "assetId" : "the Id of the asset created",
+    "containerPath" : "the url to the storage container of the asset"
+}
+
+*/
+
 #r "Newtonsoft.Json"
 #r "Microsoft.WindowsAzure.Storage"
 #r "System.Web"
@@ -24,9 +40,6 @@ using Microsoft.Azure.WebJobs;
 
 
 // Read values from the App.config file.
-static string _sourceStorageAccountName = Environment.GetEnvironmentVariable("SourceStorageAccountName");
-static string _sourceStorageAccountKey = Environment.GetEnvironmentVariable("SourceStorageAccountKey");
-
 private static readonly string _mediaServicesAccountName = Environment.GetEnvironmentVariable("AMSAccount");
 private static readonly string _mediaServicesAccountKey = Environment.GetEnvironmentVariable("AMSKey");
 
@@ -47,18 +60,18 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 
     log.Info(jsonContent);
 
-    if (data.FileName == null)
+    if (data.fileName == null)
     {
         // for test
         // data.Path = "/input/WP_20121015_081924Z.mp4";
 
         return req.CreateResponse(HttpStatusCode.BadRequest, new
         {
-            error = "Please pass FileName in the input object"
+            error = "Please pass fileName in the input object"
         });
     }
 
-    string FileName = data.FileName;// Path.GetFileName((string)data.Path);
+    string FileName = data.fileName;
 
     log.Info($"Using Azure Media Services account : {_mediaServicesAccountName}");
 
@@ -74,28 +87,6 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
         // Used the chached credentials to create CloudMediaContext.
         _context = new CloudMediaContext(_cachedCredentials);
 
-        // Step 1:  Copy the Blob into a new Input Asset for the Job
-        // ***NOTE: Ideally we would have a method to ingest a Blob directly here somehow. 
-        // using code from this sample - https://azure.microsoft.com/en-us/documentation/articles/media-services-copying-existing-blob/
-
-        /*
-        log.Info($"Create storage credentials : {_sourceStorageAccountName}");
-        StorageCredentials SourceStorageCredentials = new StorageCredentials(_sourceStorageAccountName, _sourceStorageAccountKey);
-
-        log.Info("Create storage account");
-        var sourceStorageAccount = new CloudStorageAccount(SourceStorageCredentials, false);
-
-        log.Info("Create storage blob client");
-        var sourceCloudBlobClient = sourceStorageAccount.CreateCloudBlobClient();
-
-        var sourceUri = new Uri(sourceStorageAccount.BlobStorageUri.PrimaryUri, (string)data.Path);
-        log.Info($"sourceuri {sourceUri}");
-
-        var sourceCloudBlob = (CloudBlockBlob)sourceCloudBlobClient.GetBlobReferenceFromServer(sourceUri);
-        log.Info($"sourceCloudBlob name {sourceCloudBlob.Name}");
-
-        newAsset = CreateAssetFromBlob(sourceCloudBlob, FileName, log).GetAwaiter().GetResult();
-        */
         newAsset = _context.Assets.Create(FileName, AssetCreationOptions.None);
 
     }
@@ -105,13 +96,13 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
         return req.CreateResponse(HttpStatusCode.BadRequest);
     }
 
-    log.Info("Asset ID: " + newAsset.Id);
-    log.Info("Folder Path: " + newAsset.Uri.Segments[1]);
+    log.Info("asset Id: " + newAsset.Id);
+    log.Info("container Path: " + newAsset.Uri.Segments[1]);
 
     return req.CreateResponse(HttpStatusCode.OK, new
     {
-        FolderPath = newAsset.Uri.Segments[1],
-        AssetId = newAsset.Id
+        containerPath = newAsset.Uri.Segments[1],
+        assetId = newAsset.Id
 });
 }
 

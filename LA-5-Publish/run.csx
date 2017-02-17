@@ -1,3 +1,19 @@
+/*
+This function publishes an asset.
+
+Input:
+{
+    "assetId" : "nb:cid:UUID:2d0d78a2-685a-4b14-9cf0-9afb0bb5dbfc", // Mandatory, Id of the source asset
+}
+
+Output:
+{
+    playerUrl : "", // Url of demo AMP with content
+    smoothUrl : "", // Url for the published asset (contains name.ism/manifest at the end) for dynamic packaging
+    pathUrl : ""    // Url of the asset (path)
+}
+*/
+
 #r "Newtonsoft.Json"
 #r "Microsoft.WindowsAzure.Storage"
 #load "../Shared/mediaServicesHelpers.csx"
@@ -23,9 +39,6 @@ using Microsoft.Azure.WebJobs;
 
 
 // Read values from the App.config file.
-static string _sourceStorageAccountName = Environment.GetEnvironmentVariable("SourceStorageAccountName");
-static string _sourceStorageAccountKey = Environment.GetEnvironmentVariable("SourceStorageAccountKey");
-
 private static readonly string _mediaServicesAccountName = Environment.GetEnvironmentVariable("AMSAccount");
 private static readonly string _mediaServicesAccountKey = Environment.GetEnvironmentVariable("AMSKey");
 
@@ -46,13 +59,15 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 
     log.Info(jsonContent);
 
-    if (data.AssetId == null)
+    log.Info($"asset id : {data.assetId}");
+
+    if (data.assetId == null)
     {
         // for test
-        // data.AssetId = "nb:cid:UUID:c0d770b4-1a69-43c4-a4e6-bc60d20ab0b2";
+        // data.assetId = "nb:cid:UUID:c0d770b4-1a69-43c4-a4e6-bc60d20ab0b2";
         return req.CreateResponse(HttpStatusCode.BadRequest, new
         {
-            error = "Please pass asset ID in the input object (AssetId)"
+            error = "Please pass asset ID in the input object (assetId)"
         });
     }
 
@@ -73,7 +88,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
         _context = new CloudMediaContext(_cachedCredentials);
 
         // Get the asset
-        string assetid = data.AssetId;
+        string assetid = data.assetId;
         var outputAsset = _context.Assets.Where(a => a.Id == assetid).FirstOrDefault();
 
         if (outputAsset == null)
@@ -89,21 +104,24 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
         // publish with a streaming locator
         IAccessPolicy readPolicy2 = _context.AccessPolicies.Create("readPolicy", TimeSpan.FromHours(4), AccessPermissions.Read);
         ILocator outputLocator2 = _context.Locators.CreateLocator(LocatorType.OnDemandOrigin, outputAsset, readPolicy2);
-        Uri publishurl = GetValidOnDemandURI(outputAsset);
-        if (outputLocator2 != null && publishurl != null)
+
+        var publishurlsmooth = GetValidOnDemandURI(outputAsset);
+        var publishurlpath = GetValidOnDemandPath(outputAsset);
+
+        if (outputLocator2 != null && publishurlsmooth != null)
         {
-            smoothUrl = publishurl.ToString();
-            UriBuilder u2 = new UriBuilder();
-            u2.Host = publishurl.Host;
-            u2.Path = publishurl.Segments[0] + publishurl.Segments[1];
-            u2.Scheme = publishurl.Scheme;
-            pathUrl = u2.ToString();
+            smoothUrl = publishurlsmooth.ToString();
+            playerUrl = "http://ampdemo.azureedge.net/?url=" + System.Web.HttpUtility.UrlEncode(smoothUrl);
+            log.Info($"smooth url : {smoothUrl}");
         }
 
-        log.Info($"Smooth url : {smoothUrl}");
-
-        playerUrl = "http://ampdemo.azureedge.net/?url=" + System.Web.HttpUtility.UrlEncode(smoothUrl);
+        if (outputLocator2 != null && publishurlpath != null)
+        {
+            pathUrl = publishurlpath.ToString();
+            log.Info($"path url : {pathUrl}");
+        }
     }
+
     catch (Exception ex)
     {
         log.Info($"Exception {ex}");
@@ -113,12 +131,8 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
     log.Info($"");
     return req.CreateResponse(HttpStatusCode.OK, new
     {
-        PlayerUrl = playerUrl,
-        SmoothUrl = smoothUrl,
-        PathUrl = pathUrl
+        playerUrl = playerUrl,
+        smoothUrl = smoothUrl,
+        pathUrl = pathUrl
     });
 }
-
-
-
-
