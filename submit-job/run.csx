@@ -165,8 +165,8 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
                 }
                 log.Info($"Preset path : {presetPath}");
                 preset = File.ReadAllText(presetPath);
-		preset.Replace("nb:cid:UUID:6117bc4f-a68d-4491-9d3d-6b29e1e12f21",(string)data.assetId);
-		
+		preset = preset.Replace("nb:cid:UUID:6117bc4f-a68d-4491-9d3d-6b29e1e12f21",(string)data.assetId);
+  		
             }
 
             // Create a task with the encoding details, using a string preset.
