@@ -177,6 +177,14 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 
             // Specify the input asset to be encoded.
             taskEncoding.InputAssets.Add(asset);
+
+	    // Specify the video to be stiched in front
+            taskEncoding.InputAssets.Add(asset);
+            string trailerId = "nb:cid:UUID:81df2e9e-46b3-4f30-b67c-446d42cd1968";
+            var asset2 = _context.Assets.Where(a=>a.Id == trailerId).FirstOrDefault();
+            taskEncoding.InputAssets.Add(asset2); 
+
+
             OutputMES = _taskindex++;
 
             // Add an output asset to contain the results of the job. 
