@@ -165,7 +165,8 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
                 }
                 log.Info($"Preset path : {presetPath}");
                 preset = File.ReadAllText(presetPath);
-		preset.Replace("nb:cid:UUID:6117bc4f-a68d-4491-9d3d-6b29e1e12f21",assetid);
+		preset.Replace("nb:cid:UUID:6117bc4f-a68d-4491-9d3d-6b29e1e12f21",(string)data.assetId);
+		
             }
 
             // Create a task with the encoding details, using a string preset.
@@ -183,6 +184,8 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
             string trailerId = "nb:cid:UUID:81df2e9e-46b3-4f30-b67c-446d42cd1968";
             var asset2 = _context.Assets.Where(a=>a.Id == trailerId).FirstOrDefault();
             taskEncoding.InputAssets.Add(asset2); 
+
+	    log.Info("Assets= "+asset+" "+asset2);
 
 
             OutputMES = _taskindex++;
