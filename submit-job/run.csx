@@ -153,7 +153,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
                 // Read in custom preset string
                 string homePath = Environment.GetEnvironmentVariable("HOME", EnvironmentVariableTarget.Process);
                 log.Info("Home= " + homePath);
-                string presetPath;
+                public string presetPath;
 
                 if (homePath == String.Empty)
                 {
