@@ -182,7 +182,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 	    // If we are stitching, Specify the video to be stiched in front
            bool stitch = preset.Contains("stitch");
            log.Info("We are stitching? "+stitch);
-           if stitch
+           if (stitch)
            {
             string trailerId = "nb:cid:UUID:81df2e9e-46b3-4f30-b67c-446d42cd1968";
             var asset2 = _context.Assets.Where(a=>a.Id == trailerId).FirstOrDefault();
