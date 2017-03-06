@@ -187,8 +187,6 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
             string trailerId = "nb:cid:UUID:81df2e9e-46b3-4f30-b67c-446d42cd1968";
             var asset2 = _context.Assets.Where(a=>a.Id == trailerId).FirstOrDefault();
             taskEncoding.InputAssets.Add(asset2); 
-
-	    log.Info("Assets= "+asset+" "+asset2);
            }
 
             OutputMES = _taskindex++;
