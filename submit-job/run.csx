@@ -154,7 +154,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
                 // Read in custom preset string
                 string homePath = Environment.GetEnvironmentVariable("HOME", EnvironmentVariableTarget.Process);
                 log.Info("Home= " + homePath);
-                s
+                
                 if (homePath == String.Empty)
                 {
                     presetPath = @"../presets/" + preset;
@@ -180,7 +180,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
             taskEncoding.InputAssets.Add(asset);
 
 	    // If we are stitching, Specify the video to be stiched in front
-           bool stitch = (string)presetPath.Contains("stitch");
+           bool stitch = presetPath.Contains("stitch");
            log.Info("We are stitching? "+stitch);
            if (stitch)
            {
