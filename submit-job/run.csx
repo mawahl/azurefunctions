@@ -179,14 +179,16 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
             // Specify the input asset to be encoded.
             taskEncoding.InputAssets.Add(asset);
 
-	    // Specify the video to be stiched in front
-            taskEncoding.InputAssets.Add(asset);
+	    // If we are stitching, Specify the video to be stiched in front
+
+           if (preset.Contains("stitch"))
+           {
             string trailerId = "nb:cid:UUID:81df2e9e-46b3-4f30-b67c-446d42cd1968";
             var asset2 = _context.Assets.Where(a=>a.Id == trailerId).FirstOrDefault();
             taskEncoding.InputAssets.Add(asset2); 
 
 	    log.Info("Assets= "+asset+" "+asset2);
-
+           }
 
             OutputMES = _taskindex++;
 
