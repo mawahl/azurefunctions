@@ -144,6 +144,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
             IMediaProcessor processorMES = GetLatestMediaProcessorByName("Media Encoder Standard");
 
             string preset = data.mesPreset;
+            string presetPath;
 
             if (preset.ToUpper().EndsWith(".JSON"))
             {
@@ -153,8 +154,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
                 // Read in custom preset string
                 string homePath = Environment.GetEnvironmentVariable("HOME", EnvironmentVariableTarget.Process);
                 log.Info("Home= " + homePath);
-                public string presetPath;
-
+                s
                 if (homePath == String.Empty)
                 {
                     presetPath = @"../presets/" + preset;
