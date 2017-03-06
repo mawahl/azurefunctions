@@ -180,7 +180,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
             taskEncoding.InputAssets.Add(asset);
 
 	    // If we are stitching, Specify the video to be stiched in front
-           bool stitch = preset.Contains("stitch");
+           bool stitch = presetPath.Contains("stitch");
            log.Info("We are stitching? "+stitch);
            if (stitch)
            {
