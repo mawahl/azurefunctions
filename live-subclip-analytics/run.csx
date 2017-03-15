@@ -4,21 +4,22 @@ The first task is a subclipping task that createq a MP4 file, then media analyti
 
 Input:
 {
-    "programId" : "nb:pgid:UUID:e1a61286-2467-4be3-84b6-5a4e8006d43d", // Mandatory, Id of the source program
-    "intervalSec" : 60 // Optional. Default is 60 seconds. The duration of subclip (and interval between two calls)
-    "indexV1Language" : "English", // Optional
-    "indexV2Language" : "EnUs", // Optional
-    "ocrLanguage" : "AutoDetect" or "English", // Optional
-    "faceDetectionMode" : "PerFaceEmotion, // Optional
-    "motionDetectionLevel" : "medium", // Optional
-    "summarizationDuration" : "0.0", // Optional. 0.0 for automatic
-    "hyperlapseSpeed" : "8" // Optional
+    "channelName": "channel1",      // Mandatory
+    "programName" : "program1",     // Mandatory
+    "intervalSec" : 60              // Optional. Default is 60 seconds. The duration of subclip (and interval between two calls)
+    "indexV1Language" : "English",  // Optional
+    "indexV2Language" : "EnUs",     // Optional
+    "ocrLanguage" : "AutoDetect" or "English",  // Optional
+    "faceDetectionMode" : "PerFaceEmotion,      // Optional
+    "motionDetectionLevel" : "medium",          // Optional
+    "summarizationDuration" : "0.0",            // Optional. 0.0 for automatic
+    "hyperlapseSpeed" : "8"                     // Optional
 }
 
 Output:
 {
         "jobId" :  // job id
-        "outputAssetMESId" : "", 
+        "outputAssetId" : "", 
         "outputAssetIndexV1Id" : "",
         "outputAssetIndexV2Id" : "",
         "outputAssetOCRId" : "",
@@ -26,10 +27,15 @@ Output:
         "outputAssetMotionDetectionId" : "",
         "outputAssetSummarizationId" : "",
         "outputAssetHyperlapseId" : "",
-        "subclipStart" = "",
-        "subclipduration" = "",
         "documentId" = ,  // 0, 1, 2, 3...
-        "programId" = programid
+        "programId" = programid,
+        "subclipInfo" :
+        {
+            "subclipStart" = "",
+            "subclipduration" = "",
+            "channelName" : "",
+            "programName" : "",
+        }
 }
 */
 
@@ -40,11 +46,13 @@ Output:
 #r "System.XML.Linq"
 #load "../Shared/mediaServicesHelpers.csx"
 #load "../Shared/copyBlobHelpers.csx"
+#load "../Shared/jobHelpers.csx"
 
 using System;
 using System.Net;
 using System.Net.Http;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Microsoft.WindowsAzure.MediaServices.Client;
 using System.Collections.Generic;
 using System.Linq;
@@ -86,20 +94,11 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
 
     log.Info(jsonContent);
 
-    if (data.programId == null)
+    if (data.channelName == null || data.programName == null)
     {
-        // for test
-        /*
-        data.ProgramId = "nb:pgid:UUID:e1a61286-2467-4be3-84b6-5a4e8006d43d";
-        data.IndexV2Language = "EnUs";
-        data.OCRLanguage = "AutoDetect";
-        data.FaceDetectionMode = "PerFaceEmotion";
-        data.MotionDetectionLevel = "medium";
-        */
-
         return req.CreateResponse(HttpStatusCode.BadRequest, new
         {
-            error = "Please pass program ID in the input object (programId)"
+            error = "Please pass channel name and program name in the input object (channelName, programName)"
         });
     }
 
@@ -125,6 +124,8 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
     int OutputHyperlapse = -1;
     int id = 0;
     string programid = "";
+    string programName = "";
+    string channelName = "";
 
     TimeSpan starttime = TimeSpan.FromSeconds(0);
     TimeSpan duration = TimeSpan.FromSeconds(intervalsec);
@@ -139,16 +140,38 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
         // Used the chached credentials to create CloudMediaContext.
         _context = new CloudMediaContext(_cachedCredentials);
 
-        // find the Asset
-        programid = (string)data.programId;
+        // find the Channel, Program and Asset
+        channelName = (string)data.channelName;
+        var channel = _context.Channels.Where(c => c.Name == channelName).FirstOrDefault();
+        if (channel == null)
+        {
+            log.Info("Channel not found");
+            return req.CreateResponse(HttpStatusCode.BadRequest, new
+            {
+                error = "Channel not found"
+            });
+        }
+
+        programName = (string)data.programName;
+        var program = channel.Programs.Where(p => p.Name == programName).FirstOrDefault();
+        if (program == null)
+        {
+            log.Info("Program not found");
+            return req.CreateResponse(HttpStatusCode.BadRequest, new
+            {
+                error = "Program not found"
+            });
+        }
+
+        programid = program.Id;
         var asset = GetAssetFromProgram(programid);
 
         if (asset == null)
         {
-            log.Info($"Asset or Program not found {programid}");
+            log.Info($"Asset not found for program {programid}");
             return req.CreateResponse(HttpStatusCode.BadRequest, new
             {
-                error = "Asset or Program not found"
+                error = "Asset not found"
             });
         }
 
@@ -178,12 +201,10 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
         var lastendtimeInTable = RetrieveLastEndTime(table, programid);
 
         // Get the manifest data (timestamps)
-        var assetmanifestdata = GetManifestTimingData(asset);
+        var assetmanifestdata = GetManifestTimingData(asset, log);
 
         log.Info("Timestamps: " + string.Join(",", assetmanifestdata.TimestampList.Select(n => n.ToString()).ToArray()));
 
-
-        //var livetime = TimeSpan.FromSeconds((double)assetmanifestdata.TimestampOffset / (double)assetmanifestdata.TimeScale) + assetmanifestdata.AssetDuration;
         var livetime = TimeSpan.FromSeconds((double)assetmanifestdata.TimestampEndLastChunk / (double)assetmanifestdata.TimeScale);
 
         log.Info($"Livetime: {livetime}");
@@ -218,7 +239,7 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
         string ConfigurationSubclip = File.ReadAllText(@"D:\home\site\wwwroot\Presets\LiveSubclip.json").Replace("0:00:00.000000", starttime.Subtract(TimeSpan.FromMilliseconds(100)).ToString()).Replace("0:00:30.000000", duration.Add(TimeSpan.FromMilliseconds(200)).ToString());
 
 
-        //MES Subclipping TASK
+        // MES Subclipping TASK
         // Declare a new encoding job with the Standard encoder
         job = _context.Jobs.Create("Azure Function - Job for Live Analytics");
         // Get a media processor reference, and pass to it the name of the 
@@ -312,7 +333,9 @@ public static async Task<object> Run(HttpRequestMessage req, TraceWriter log)
         outputAssetHyperlapseId = ReturnId(job, OutputHyperlapse),
         subclipStart = starttime,
         subclipDuration = duration,
-        documentId = id.ToString(),
+        channelName = channelName,
+        programName = programName,
+        documentId = id,
         programId = programid
     });
 }
@@ -335,42 +358,6 @@ public static void UpdateLastEndTime(CloudTable table, TimeSpan endtime, string 
     EndTimeInTableEntity.AssignRowKey();
     TableOperation tableOperation = TableOperation.InsertOrReplace(EndTimeInTableEntity);
     table.Execute(tableOperation);
-}
-
-
-public static string ReturnId(IJob job, int index)
-{
-    return index > -1 ? job.OutputMediaAssets[index].Id : null;
-}
-
-public static int AddTask(IJob job, IAsset sourceAsset, string value, string processor, string presetfilename, string stringtoreplace, ref int taskindex)
-{
-    if (value != null)
-    {
-        // Get a media processor reference, and pass to it the name of the 
-        // processor to use for the specific task.
-        IMediaProcessor mediaProcessor = GetLatestMediaProcessorByName(processor);
-
-        string Configuration = File.ReadAllText(@"D:\home\site\wwwroot\Presets\" + presetfilename).Replace(stringtoreplace, value);
-
-        // Create a task with the encoding details, using a string preset.
-        var task = job.Tasks.AddNew(processor + " task",
-           mediaProcessor,
-           Configuration,
-           TaskOptions.None);
-
-        // Specify the input asset to be indexed.
-        task.InputAssets.Add(sourceAsset);
-
-        // Add an output asset to contain the results of the job.
-        task.OutputAssets.AddNew(processor + " Output Asset", AssetCreationOptions.None);
-
-        return taskindex++;
-    }
-    else
-    {
-        return -1;
-    }
 }
 
 static IAsset GetAssetFromProgram(string programId)
@@ -412,7 +399,7 @@ static public TimeSpan ReturnTimeSpanOnGOP(ManifestTimingData data, TimeSpan ts)
 }
 
 
-static public ManifestTimingData GetManifestTimingData(IAsset asset)
+static public ManifestTimingData GetManifestTimingData(IAsset asset, TraceWriter log)
 // Parse the manifest and get data from it
 {
     ManifestTimingData response = new ManifestTimingData() { IsLive = false, Error = false, TimestampOffset = 0, TimestampList = new List<ulong>() };
@@ -428,7 +415,11 @@ static public ManifestTimingData GetManifestTimingData(IAsset asset)
         }
         if (myuri != null)
         {
+            log.Info($"Asset URI {myuri.ToString()}");
+   
             XDocument manifest = XDocument.Load(myuri.ToString());
+
+             log.Info($"manifest {manifest}");
             var smoothmedia = manifest.Element("SmoothStreamingMedia");
             var videotrack = smoothmedia.Elements("StreamIndex").Where(a => a.Attribute("Type").Value == "video");
 
@@ -458,13 +449,17 @@ static public ManifestTimingData GetManifestTimingData(IAsset asset)
             foreach (var chunk in videotrack.Elements("c"))
             {
                 durationchunk = chunk.Attribute("d") != null ? ulong.Parse(chunk.Attribute("d").Value) : 0;
+                 log.Info($"duration d {durationchunk}");
+
                 repeatchunk = chunk.Attribute("r") != null ? int.Parse(chunk.Attribute("r").Value) : 1;
+                  log.Info($"repeat r {repeatchunk}");
                 totalduration += durationchunk * (ulong)repeatchunk;
 
                 if (chunk.Attribute("t") != null)
                 {
                     //totalduration = ulong.Parse(chunk.Attribute("t").Value) - response.TimestampOffset; // new timestamp, perhaps gap in live stream....
                     response.TimestampList.Add(ulong.Parse(chunk.Attribute("t").Value));
+                    log.Info($"t value {ulong.Parse(chunk.Attribute("t").Value)}");
                 }
                 else
                 {
@@ -604,6 +599,3 @@ public class EndTimeInTable : TableEntity
         }
     }
 }
-
-
-
