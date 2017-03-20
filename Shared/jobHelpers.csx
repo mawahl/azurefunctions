@@ -30,14 +30,8 @@ public static int AddTask(IJob job, IAsset sourceAsset, string value, string pro
         string homePath = Environment.GetEnvironmentVariable("HOME", EnvironmentVariableTarget.Process);
         string presetPath;
 
-        if (homePath == String.Empty)
-        {
-            presetPath = @"../Presets/" + presetfilename;
-        }
-        else
-        {
-            presetPath = Path.Combine(homePath, @"site\repository\Presets\" + presetfilename);
-        }
+        presetPath = Path.Combine(homePath, @"site\Presets\" + presetfilename);
+      
 
         string Configuration = File.ReadAllText(presetPath).Replace(stringtoreplace, value);
 
