@@ -32,9 +32,6 @@ public static int AddTask(IJob job, IAsset sourceAsset, string value, string pro
 
         presetPath = Path.Combine(homePath, @"site\repository\200-logic-app-basic\presets\" + presetfilename);
    
-        log.Info($"Preset Path {presetPath}");
-      
-
         string Configuration = File.ReadAllText(presetPath).Replace(stringtoreplace, value);
 
         // Create a task with the encoding details, using a string preset.
