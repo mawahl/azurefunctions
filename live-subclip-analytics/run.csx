@@ -46,9 +46,9 @@ Output:
 #r "System.Web"
 #r "System.XML"
 #r "System.XML.Linq"
-#load "../Shared/mediaServicesHelpers.csx"
-#load "../Shared/copyBlobHelpers.csx"
-#load "../Shared/jobHelpers.csx"
+#load "../shared/mediaServicesHelpers.csx"
+#load "../shared/copyBlobHelpers.csx"
+#load "../shared/jobHelpers.csx"
 
 using System;
 using System.Net;
