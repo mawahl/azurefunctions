@@ -36,7 +36,7 @@ public static int AddTask(IJob job, IAsset sourceAsset, string value, string pro
         }
         else
         {
-            presetPath = Path.Combine(homePath, @"site\repository\azurefunctions\Presets\" + presetfilename);
+            presetPath = Path.Combine(homePath, @"site\repository\Presets\" + presetfilename);
         }
 
         string Configuration = File.ReadAllText(presetPath).Replace(stringtoreplace, value);
