@@ -30,7 +30,9 @@ public static int AddTask(IJob job, IAsset sourceAsset, string value, string pro
         string homePath = Environment.GetEnvironmentVariable("HOME", EnvironmentVariableTarget.Process);
         string presetPath;
 
-        presetPath = Path.Combine(homePath, @"site\Presets\" + presetfilename);
+        presetPath = Path.Combine(homePath, @"site\repository\200-logic-app-basic\presets\" + presetfilename);
+   
+        log.Info($"Preset Path {presetPath}");
       
 
         string Configuration = File.ReadAllText(presetPath).Replace(stringtoreplace, value);
