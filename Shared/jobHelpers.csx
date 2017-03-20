@@ -32,7 +32,7 @@ public static int AddTask(IJob job, IAsset sourceAsset, string value, string pro
 
         if (homePath == String.Empty)
         {
-            presetPath = @"../presets/" + presetfilename;
+            presetPath = @"../Presets/" + presetfilename;
         }
         else
         {
